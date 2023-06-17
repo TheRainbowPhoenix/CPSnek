@@ -1,3 +1,6 @@
+
+char end = 0;
+
 #include <appdef.hpp>
 #include <sdk/calc/calc.hpp>
 #include <sdk/os/lcd.hpp>
@@ -7,7 +10,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "pvm/pvm.h"
+extern "C" {
+#include "pvm/snek.h"
+}
 
 /*
  * Fill this section in with some information about your app.
@@ -17,6 +22,7 @@ APP_NAME("Snek")
 APP_DESCRIPTION("A small Python-compatible interpreter")
 APP_AUTHOR("PC")
 APP_VERSION("1.0.0")
+
 
 extern "C"
 void main() {
@@ -142,6 +148,9 @@ void main() {
 			} else {
 				Debug_Printf(0, 1, false, 0, "Read %d bytes of class - OK", bytes_read );
 				// TODO: exec here
+
+				// bc
+				bool ret = snek_parse() == snek_parse_success;
 			}
 		}
 
