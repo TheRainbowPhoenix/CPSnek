@@ -25,6 +25,9 @@ APP_VERSION("1.0.0")
 
 
 extern "C"
+
+uint8_t *snek_cp_input = nullptr; 
+
 void main() {
 	calcInit(); //backup screen and init some variables
 
@@ -136,12 +139,12 @@ void main() {
 		fstat(class_file, &class_file_stat);
 
 		// dynamically allocate space for bc (bytecode) class in heap
-		uint8_t *bc = (uint8_t *)malloc(class_file_stat.fileSize);
+		snek_cp_input = (uint8_t *)malloc(class_file_stat.fileSize);
 
-		if(!bc) {
+		if(!snek_cp_input) {
 			Debug_Printf(0, 1, true, 0, "Class stat is null ?");
 		} else {
-			int32_t bytes_read  = read(class_file, bc, class_file_stat.fileSize);
+			int32_t bytes_read  = read(class_file, snek_cp_input, class_file_stat.fileSize);
 
 			if (bytes_read  < 0) {
 				Debug_Printf(0, 1, true, 0, "Empty file : %d", bytes_read);

@@ -1,6 +1,13 @@
 
 #include "snek.h"
 
+int snek_cp_index = 0;
+
+int snek_file_getc(uint8_t *input) {
+    uint8_t next_char = input[snek_cp_index++];
+    return next_char;
+}
+
 snek_poly_t
 snek_builtin_exit(snek_poly_t a)
 {

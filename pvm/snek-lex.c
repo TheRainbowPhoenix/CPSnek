@@ -43,9 +43,9 @@ static uint8_t snek_lex_len;
 static char ungetbuf[5];
 static uint8_t ungetcount;
 
-#ifndef SNEK_GETC
-#define SNEK_GETC() getchar()
-#endif
+// #ifndef SNEK_GETC
+// #define SNEK_GETC() getchar()
+// #endif
 
 #define SNEK_EOF	0x00
 
