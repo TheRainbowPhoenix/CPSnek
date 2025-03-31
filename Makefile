@@ -41,12 +41,22 @@ OBJECTS := $(addprefix $(BUILDDIR)/,$(AS_SOURCES:.S=.o)) \
 	$(addprefix $(BUILDDIR)/,$(CC_SOURCES:.c=.o)) \
 	$(addprefix $(BUILDDIR)/,$(CXX_SOURCES:.cpp=.o))
 
+SNEK_ROOT = $(SOURCEDIR)/pvm
+
+SNEK_BUILTINS = \
+	$(SNEK_ROOT)/snek-keyword.builtin \
+	$(SNEK_ROOT)/snek-base.builtin \
+	$(SNEK_LOCAL_BUILTINS)
 
 
+SNEK_DEBUG = 1
 
 bin: $(APP_BIN) Makefile
 
 hhk: $(APP_ELF) Makefile
+
+snek-builtin.h: $(SNEK_ROOT)/snek-builtin.py $(SNEK_BUILTINS)
+	python3 $^ -o $@
 
 all: $(APP_ELF) $(APP_BIN) Makefile
 
@@ -74,6 +84,8 @@ $(BUILDDIR)/%.o: %.S
 $(BUILDDIR)/%.o: %.c
 	mkdir -p $(dir $@)
 	$(CC) -c $< -o $@ $(CC_FLAGS)
+
+	
 
 # Break the build if global constructors are present:
 # Read the sections from the object file (with readelf -S) and look for any
