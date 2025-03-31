@@ -1,4 +1,4 @@
-FROM pho3be/sh4devenvgitpod:latest
+FROM ghcr.io/therainbowphoenix/cp-codespace:beta-02
 
 USER root
 
