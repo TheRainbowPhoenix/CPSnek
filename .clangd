@@ -1,5 +1,6 @@
 CompileFlags:
   Add: [
       "-I/sdk/include/",
+      "-I./src/",
       "-I/toolchain/sh4aeb-elf/sys-include/"
   ]

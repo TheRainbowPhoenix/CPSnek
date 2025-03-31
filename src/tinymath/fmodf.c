@@ -26,8 +26,9 @@
 │                                                                              │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include <math.h>
+#include <stdint.h>
 
-float fmodf(float x, float y)
+float some_fmodf(float x, float y)
 {
 	union {float f; uint32_t i;} ux = {x}, uy = {y};
 	int ex = ux.i>>23 & 0xff;
@@ -88,4 +89,9 @@ float fmodf(float x, float y)
 	uxi |= sx;
 	ux.i = uxi;
 	return ux.f;
+}
+
+// 1.442695040888963407354163704 is 1/_M_LN2
+float log2f(float x) {
+    return x; // MICROPY_FLOAT_C_FUN(log)(x) * MICROPY_FLOAT_CONST(1.442695040888963407354163704);
 }

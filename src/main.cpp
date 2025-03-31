@@ -28,6 +28,13 @@ extern "C"
 
 uint8_t *snek_cp_input = nullptr; 
 
+namespace std {
+    [[noreturn]] void __throw_domain_error(const char*) {
+        // Handle error, e.g., abort
+		Debug_Printf(0,0,false,0,"Domain Error");
+    }
+}
+
 void main() {
 	calcInit(); //backup screen and init some variables
 
@@ -128,15 +135,15 @@ void main() {
 
 	char filename[] = "\\fls0\\py\\hello.py";
 
-	int32_t class_file = open(filename, OPEN_READ);	
+	int32_t class_file = File_Open(filename, FILE_OPEN_READ);	
 	
 	if(class_file < 0) {
 		Debug_Printf(0, 1, true, 0, "Can't load %s", filename);
 	} else {
 
-		struct stat class_file_stat;
+		struct File_Stat class_file_stat;
 
-		fstat(class_file, &class_file_stat);
+		File_Fstat(class_file, &class_file_stat);
 
 		// dynamically allocate space for bc (bytecode) class in heap
 		snek_cp_input = (uint8_t *)malloc(class_file_stat.fileSize);
@@ -144,7 +151,7 @@ void main() {
 		if(!snek_cp_input) {
 			Debug_Printf(0, 1, true, 0, "Class stat is null ?");
 		} else {
-			int32_t bytes_read  = read(class_file, snek_cp_input, class_file_stat.fileSize);
+			int32_t bytes_read  = File_Read(class_file, snek_cp_input, class_file_stat.fileSize);
 
 			if (bytes_read  < 0) {
 				Debug_Printf(0, 1, true, 0, "Empty file : %d", bytes_read);
@@ -157,7 +164,7 @@ void main() {
 			}
 		}
 
-		close(class_file);
+		File_Close(class_file);
 	}
 
 	

@@ -6,30 +6,43 @@ ifndef SDK_DIR
 $(error You need to define the SDK_DIR environment variable, and point it to the sdk/ folder)
 endif
 
-AS:=sh4-elf-as
-AS_FLAGS:=
+AS:=sh4aeb-elf-gcc
+AS_FLAGS:=-DAPPNAME_STRING=\"$(APP_NAME)\"
 
-CC:=sh4-elf-gcc
-CC_FLAGS:=-ffreestanding -fshort-wchar -Wall -Wextra -O2 -I -fno-jump-tables  $(SDK_DIR)/include/ -I $(SDK_DIR)/newlib/sh-elf/include/ 
+COMMON_FLAGS:=-flto -ffunction-sections -fdata-sections -ffreestanding -fshort-wchar -O2 -m4a-nofpu -DAPPNAME_STRING=\"$(APP_NAME)\" -DUSE_MALLOC_STACK
+# add tis to debug :  -DDEBUG_EXPRESSIONS -DDEBUG_LEXER
+INCLUDES:=-I $(SDK_DIR)/include/
+WARNINGS:=-Wall -Wextra
 
-CXX:=sh4-elf-g++
-CXX_FLAGS:=-ffreestanding -fno-exceptions -fno-rtti -fshort-wchar -Wall -Wextra -O2 -fpermissive -I $(SDK_DIR)/include/ -m4a-nofpu -I $(SDK_DIR)/newlib/sh-elf/include/
+CC:=sh4aeb-elf-gcc
+CC_FLAGS:=$(COMMON_FLAGS) $(INCLUDES) $(WARNINGS)
 
-LD:=sh4-elf-gcc
-LD_FLAGS:=-nostartfiles -m4-nofpu -Wno-undef -L$(SDK_DIR)/newlib/sh-elf/lib/ -lm -lc
+CXX:=sh4aeb-elf-g++
+CXX_FLAGS:=-fno-exceptions -nostdinc++ -fno-rtti -Wno-write-strings $(COMMON_FLAGS) $(INCLUDES) $(WARNINGS) -fpermissive
+
+LD:=sh4aeb-elf-gcc
+LD_FLAGS:=-nostartfiles -m4a-nofpu -Wl,--gc-sections $(WARNINGS) $(COMMON_FLAGS) -L$(SDK_DIR)
 
 READELF:=sh4-elf-readelf
 OBJCOPY:=sh4-elf-objcopy
 
-AS_SOURCES:=$(wildcard *.s)
-CC_SOURCES:=$(wildcard *.c)
-CC_SOURCES +=$(shell find "pvm" -name '*.c')
-CXX_SOURCES:=$(wildcard *.cpp)
-CXX_SOURCES +=$(shell find "pvm" -name '*.cpp')
-OBJECTS:=$(AS_SOURCES:.s=.o) $(CC_SOURCES:.c=.o) $(CXX_SOURCES:.cpp=.o)
+SOURCEDIR = src
+BUILDDIR = obj
+OUTDIR = dist
+BINDIR = $(OUTDIR)/$(APP_NAME)/bin
 
-APP_ELF:=$(APP_NAME).hhk
-APP_BIN:=$(APP_NAME).bin
+APP_ELF:=$(OUTDIR)/$(APP_NAME).elf
+APP_BIN:=$(OUTDIR)/$(APP_NAME).bin
+
+AS_SOURCES:=$(shell find $(SOURCEDIR) -name '*.S')
+CC_SOURCES:=$(shell find $(SOURCEDIR) -name '*.c')
+CXX_SOURCES:=$(shell find $(SOURCEDIR) -name '*.cpp')
+OBJECTS := $(addprefix $(BUILDDIR)/,$(AS_SOURCES:.S=.o)) \
+	$(addprefix $(BUILDDIR)/,$(CC_SOURCES:.c=.o)) \
+	$(addprefix $(BUILDDIR)/,$(CXX_SOURCES:.cpp=.o))
+
+
+
 
 bin: $(APP_BIN) Makefile
 
@@ -38,28 +51,28 @@ hhk: $(APP_ELF) Makefile
 all: $(APP_ELF) $(APP_BIN) Makefile
 
 clean:
-	rm -f $(OBJECTS) $(APP_ELF) $(APP_BIN)
+	rm -rf $(BUILDDIR) $(OUTDIR)
 
-$(APP_ELF): $(OBJECTS) $(SDK_DIR)/sdk.o linker_hhk.ld
-	$(LD) -T linker_hhk.ld -o $@ $(LD_FLAGS) $(OBJECTS) $(SDK_DIR)/sdk.o
-	$(OBJCOPY) --set-section-flags .hollyhock_name=contents,strings,readonly $(APP_ELF) $(APP_ELF)
-	$(OBJCOPY) --set-section-flags .hollyhock_description=contents,strings,readonly $(APP_ELF) $(APP_ELF)
-	$(OBJCOPY) --set-section-flags .hollyhock_author=contents,strings,readonly $(APP_ELF) $(APP_ELF)
-	$(OBJCOPY) --set-section-flags .hollyhock_version=contents,strings,readonly $(APP_ELF) $(APP_ELF)
 
-$(APP_BIN): $(OBJECTS) $(SDK_DIR)/sdk.o linker_bin.ld
-	$(LD) -Wl,--oformat=binary -T linker_bin.ld -o $@ $(LD_FLAGS) $(OBJECTS) $(SDK_DIR)/sdk.o
+$(APP_ELF): $(OBJECTS) $(SDK_DIR)/libsdk.a linker.ld
+	$(LD) -T linker.ld -Wl,-Map $@.map -o $@ $(LD_FLAGS) $(OBJECTS) -lsdk
+
+$(APP_BIN): $(APP_ELF)
+	$(OBJCOPY) --output-target=binary --set-section-flags .bss=alloc,load,contents,data $< $@
 
 # We're not actually building sdk.o, just telling the user they need to do it
 # themselves. Just using the target to trigger an error when the file is
 # required but does not exist.
-$(SDK_DIR)/sdk.o:
-	$(error You need to build the SDK before using it. Run make in the SDK directory, and check the README.md in the SDK directory for more information)
+$(SDK_DIR)/libsdk.a:
+	@echo "ERROR: You need to build the SDK before using it. Run make in the SDK directory, and check the README.md in the SDK directory for more information" 1>&2 && exit 1
 
-%.o: %.s
-	$(AS) $< -o $@ $(AS_FLAGS)
 
-%.o: %.c
+$(BUILDDIR)/%.o: %.S
+	mkdir -p $(dir $@)
+	$(AS) -c $< -o $@ $(AS_FLAGS)
+
+$(BUILDDIR)/%.o: %.c
+	mkdir -p $(dir $@)
 	$(CC) -c $< -o $@ $(CC_FLAGS)
 
 # Break the build if global constructors are present:
@@ -67,7 +80,8 @@ $(SDK_DIR)/sdk.o:
 # called .ctors - if they exist, give the user an error message, delete the
 # object file (so that on subsequent runs of make the build will still fail)
 # and exit with an error code to halt the build.
-%.o: %.cpp
+$(BUILDDIR)/%.o: %.cpp
+	mkdir -p $(dir $@)
 	$(CXX) -c $< -o $@ $(CXX_FLAGS)
 	@$(READELF) $@ -S | grep ".ctors" > /dev/null && echo "ERROR: Global constructors aren't supported." && rm $@ && exit 1 || exit 0
 
